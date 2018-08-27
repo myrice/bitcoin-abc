@@ -27,6 +27,53 @@
 
 #include <cstdint>
 
+
+/**
+ * getaddressbalance
+ **/
+static UniValue getaddressbalance(const Config &config,
+                                const JSONRPCRequest &request) {
+    if (request.fHelp || request.params.size() != 1) {
+        throw std::runtime_error(
+            "getaddressbalance \"address\"\n"
+            "\nReturns the balance for an address(es) (requires addressindex to be enabled).\n"
+            "\nArguments:\n"
+            "{\n"
+            "  \"addresses\"\n"
+            "    [\n"
+            "      \"address\"  (string) The base58check encoded address\n"
+            "      ,...\n"
+            "    ]\n"
+            "}\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"balance\"  (string) The current balance in satoshis\n"
+            "  \"received\"  (string) The total number of satoshis received (including change)\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getaddressbalance", "'{\"addresses\": [\"12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX\"]}'")
+            + HelpExampleRpc("getaddressbalance", "{\"addresses\": [\"12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX\"]}")
+        );
+    }
+
+    CTxDestination dest =
+        DecodeDestination(request.params[0].get_str(), config.GetChainParams());
+    bool isValid = IsValidDestination(dest);
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("isvalid", isValid));
+    if (isValid) {
+        std::string currentAddress = EncodeDestination(dest);
+        ret.push_back(Pair("address", currentAddress));
+
+        CScript scriptPubKey = GetScriptForDestination(dest);
+        ret.push_back(Pair("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
+
+        ret.push_back(Pair("balance", 1.0))
+    }
+    return ret;
+}
+
 /**
  * @note Do not add or change anything in the information returned by this
  * method. `getinfo` exists for backwards-compatibility only. It combines
@@ -632,6 +679,8 @@ static UniValue echo(const Config &config, const JSONRPCRequest &request) {
 static const ContextFreeRPCCommand commands[] = {
     //  category            name                      actor (function)        okSafeMode
     //  ------------------- ------------------------  ----------------------  ----------
+    { "addressindex",       "getaddressbalance",      getaddressbalance,      true,  {"address"} }, /* uses wallet if enabled */
+
     { "control",            "getinfo",                getinfo,                true,  {} }, /* uses wallet if enabled */
     { "control",            "getmemoryinfo",          getmemoryinfo,          true,  {} },
     { "util",               "validateaddress",        validateaddress,        true,  {"address"} }, /* uses wallet if enabled */
